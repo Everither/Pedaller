@@ -1,0 +1,66 @@
+from flpianoroll import *
+
+optionsCourse = [0, 1, 2, 3, 4, 8, 12, 16]
+optionsFine = [0, 0.5, 0.25, 0.125, 0.0625, 0.03125]
+
+# Helper function for creating markers
+def makeMarker(time):
+    marker = Marker(time)
+    marker.time = time
+    return marker
+
+def createDialog():
+    """
+    This creates the Dialog Box to control the tool.  
+    """
+    form = ScriptDialog("Sustain Pedal Simulator", 
+                        "Simulate sustain pedalling by manipulating the length of notes." + 
+                        "\r'Course' - selects how frequent the pedal is activiated." + 
+                        "\r'Fine' - same thing but for finer adjustments." + 
+                        "\rThe sum of 'Course' and 'Fine' will be processed" +
+                        "\rWhen both 'Course' and 'Fine' are 'None', no change will be processed."
+                        )
+    form.AddInputCombo('Course', 'None, 1 beat, 2 beats, 3 beats, 1 bar, 2 bars, 3 bars, 4 bars', 0)
+    form.AddInputCombo('Fine', 'None, 1/2, 1/4, 1/8, 1/16, 1/32', 0)
+    form.AddInputCombo('Enable Markers', 'True, False', 0)
+    return form
+
+def apply(form):
+
+    global optionsCourse
+    global optionsFine
+
+    # List to remember all marker positions added
+    marker_tracker = []
+
+    # Score
+    scr = [score.getNote(i) for i in range(score.noteCount)]
+
+    # Get the PPQ of the current project     
+    beat = score.PPQ                            
+
+    # Set the sustain length
+    courseValue = optionsCourse[form.GetInputValue('Course')] * beat  
+    fineValue = int(optionsFine[form.GetInputValue('Fine')] * beat)               
+    sus_length =  courseValue + fineValue      
+
+    if sus_length == 0:
+        return 
+
+    # Main loop - Iterate through each note
+    for current in scr:
+        current.length = sus_length - (current.time % sus_length)
+        # add marker
+        if form.GetInputValue('Enable Markers') == 0:
+            sections = (current.time // sus_length) + 1
+            for i in range(sections):
+                if i not in marker_tracker:
+                    score.addMarker(makeMarker(i * sus_length))
+                    marker_tracker.append(i)
+
+    # Remove overlaps
+    for noteA in scr:
+        for noteB in scr:
+            if noteA.number == noteB.number and noteA != noteB:
+                if noteA.time < noteB.time and noteA.time + noteA.length > noteB.time:
+                    noteA.length = noteB.time - noteA.time
