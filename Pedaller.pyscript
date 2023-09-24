@@ -50,7 +50,7 @@ def apply(form):
     # Main loop - Iterate through each note
     for current in scr:
         current.length = sus_length - (current.time % sus_length)
-        # add marker
+        # Add marker
         if form.GetInputValue('Enable Markers') == 0:
             sections = (current.time // sus_length) + 1
             for i in range(sections):
